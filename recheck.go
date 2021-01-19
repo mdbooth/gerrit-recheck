@@ -138,6 +138,7 @@ func doCheck(client *gerrit.Client, changeID string) (bool, error) {
 	if err != nil {
 		return false, fmt.Errorf("Adding review comment: %w", err)
 	}
+	log.Print("Added recheck")
 
 	return false, nil
 }
