@@ -65,7 +65,6 @@ func main() {
 		approved, err := doCheck(client, changeID)
 		if err != nil {
 			log.Print(fmt.Sprintf("ERROR: %s", err))
-			continue
 		}
 		if approved {
 			break
