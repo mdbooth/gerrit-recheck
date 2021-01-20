@@ -14,10 +14,6 @@ credentials locally, please store them carefully, for example using a keystore
 with a master password. Alternatively generate a new password from the gerrit
 web UI for each invocation.
 
-```
-machine review.opendev.org login MatthewBooth password SooperS3cr3t
-```
-
 ## Building
 
 ```
@@ -29,7 +25,7 @@ make
 To automatically recheck change `https://review.opendev.org/c/openstack/openstacksdk/+/763121/`, do:
 
 ```
-./gerrit-recheck 763121
+./gerrit-recheck -u MatthewBooth 763121
 ```
 
 ## Behaviour
