@@ -1,65 +1,74 @@
 package main
 
 import (
+	"flag"
 	"fmt"
-	"github.com/andygrunwald/go-gerrit"
-	"github.com/jdxcode/netrc"
 	"log"
-	"net/url"
 	"os"
-	"os/user"
-	"path/filepath"
 	"strconv"
 	"strings"
+	"syscall"
 	"time"
+
+	"github.com/andygrunwald/go-gerrit"
+	"golang.org/x/crypto/ssh/terminal"
 )
 
 const gerritInstance = "https://review.opendev.org"
 const ciName = "Zuul"
 
-func getChangeID() (string, error) {
-	const usage = "Usage: gerrit-recheck <changeid>"
+var username = flag.String("u", "", "Gerrit username")
 
-	if len(os.Args) != 2 {
-		return "", fmt.Errorf(usage)
+func getChangeID() (string, error) {
+	if flag.NArg() != 1 {
+		return "", fmt.Errorf("No change id specified")
 	}
 
-	changeIDStr := os.Args[1]
+	changeIDStr := flag.Args()[0]
 
 	changeID, err := strconv.Atoi(changeIDStr)
 	if err != nil || changeID < 0 {
-		return "", fmt.Errorf("Invalid change id %s\n%s", changeIDStr, usage)
+		return "", fmt.Errorf("Invalid change id %s", changeIDStr)
 	}
 
 	return changeIDStr, nil
 }
 
+func exitWithUsage(msg string) {
+	fmt.Fprintf(os.Stderr, "%s\n", msg)
+	fmt.Fprintf(os.Stderr, "Usage: gerrit-recheck -u <gerrit username> <gerrit change id>\n")
+	flag.PrintDefaults()
+	os.Exit(1)
+}
+
 func main() {
+	flag.Parse()
+	if *username == "" {
+		exitWithUsage("Username not specified")
+	}
+
 	changeID, err := getChangeID()
 	if err != nil {
-		panic(err)
+		exitWithUsage(err.Error())
 	}
 
-	usr, err := user.Current()
-	n, err := netrc.Parse(filepath.Join(usr.HomeDir, ".netrc"))
+	fmt.Print("Gerrit password: ")
+	password, err := terminal.ReadPassword(int(syscall.Stdin))
+	fmt.Print("\n")
 	if err != nil {
-		panic(fmt.Errorf("Parsing .netrc: %w", err))
+		fmt.Fprintf(os.Stderr, "Failed to read password from stdin")
+		os.Exit(1)
 	}
-
-	url, err := url.Parse(gerritInstance)
-	if err != nil {
-		panic(err)
-	}
-
-	machine := n.Machine(url.Host)
-	if machine == nil {
-		panic(fmt.Errorf("%s not found in .netrc", url.Host))
-	}
-	username := machine.Get("login")
-	password := machine.Get("password")
 
 	client, err := gerrit.NewClient(gerritInstance, nil)
-	client.Authentication.SetBasicAuth(username, password)
+	client.Authentication.SetBasicAuth(*username, string(password))
+
+	change, _, err := client.Changes.GetChange(changeID, nil)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Failed to get change details from gerrit: %s\n", err.Error())
+		os.Exit(1)
+	}
+	log.Print(fmt.Sprintf("Rechecking change %s: %s", changeID, change.Subject))
 
 	for {
 		approved, err := doCheck(client, changeID)

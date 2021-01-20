@@ -9,7 +9,10 @@ This tool should not exist, but it does and it's useful. Make of that what you w
 The tool uses Gerrit's REST api, which on opendev uses HTTP basic authentication. To get an HTTP password you need to generate one.
 When logged in to Gerrit, go to Settings->HTTP Credentials, and click `GENERATE NEW PASSWORD`.
 
-The tools reads the password from a `.netrc` file. This file should be located at `~/.netrc` with permissions 0600. The following is an example of a correct file:
+The tool reads the password from stdin when invoked. If you store your gerrit
+credentials locally, please store them carefully, for example using a keystore
+with a master password. Alternatively generate a new password from the gerrit
+web UI for each invocation.
 
 ```
 machine review.opendev.org login MatthewBooth password SooperS3cr3t
