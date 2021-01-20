@@ -111,8 +111,8 @@ func doCheck(client *gerrit.Client, changeID string) (bool, error) {
 		log.Print("CI has approved")
 		return true, nil
 	}
-	if ciVote.Value == 1 {
-		log.Print("CI voted +1, waiting for approval")
+	if ciVote.Value >= 0 {
+		log.Print(fmt.Sprintf("CI voted %+d, waiting for approval", ciVote.Value))
 		return false, nil
 	}
 
