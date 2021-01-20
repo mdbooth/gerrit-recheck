@@ -28,6 +28,12 @@ To automatically recheck change `https://review.opendev.org/c/openstack/openstac
 ./gerrit-recheck -u MatthewBooth 763121
 ```
 
+To do the same, but automatically passing a password from `pass`:
+
+```
+pass review.opendev.org/http | ./gerrit-recheck -u MatthewBooth 763121
+```
+
 ## Behaviour
 
 The tool looks for a negative `Verified` vote from Zuul. If it finds one, it looks for a recheck comment dated later than the negative vote. If it doesn't find one, it adds one.

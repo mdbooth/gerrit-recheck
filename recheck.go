@@ -1,16 +1,17 @@
 package main
 
 import (
+	"bufio"
 	"flag"
 	"fmt"
 	"log"
 	"os"
 	"strconv"
 	"strings"
-	"syscall"
 	"time"
 
 	"github.com/andygrunwald/go-gerrit"
+	"github.com/mattn/go-isatty"
 	"golang.org/x/crypto/ssh/terminal"
 )
 
@@ -34,6 +35,26 @@ func getChangeID() (string, error) {
 	return changeIDStr, nil
 }
 
+func readPassword() (string, error) {
+	fmt.Print("Gerrit password: ")
+	defer fmt.Print("\n")
+
+	if isatty.IsTerminal(os.Stdin.Fd()) {
+		bytes, err := terminal.ReadPassword(int(os.Stdin.Fd()))
+		if err != nil {
+			return "", err
+		}
+		return string(bytes), nil
+	}
+
+	reader := bufio.NewReader(os.Stdin)
+	line, err := reader.ReadString('\n')
+	if err != nil {
+		return "", err
+	}
+	return strings.TrimSpace(line), err
+}
+
 func exitWithUsage(msg string) {
 	fmt.Fprintf(os.Stderr, "%s\n", msg)
 	fmt.Fprintf(os.Stderr, "Usage: gerrit-recheck -u <gerrit username> <gerrit change id>\n")
@@ -52,16 +73,14 @@ func main() {
 		exitWithUsage(err.Error())
 	}
 
-	fmt.Print("Gerrit password: ")
-	password, err := terminal.ReadPassword(int(syscall.Stdin))
-	fmt.Print("\n")
+	password, err := readPassword()
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Failed to read password from stdin")
+		fmt.Fprintf(os.Stderr, "Failed to read password from stdin: %s", err.Error())
 		os.Exit(1)
 	}
 
 	client, err := gerrit.NewClient(gerritInstance, nil)
-	client.Authentication.SetBasicAuth(*username, string(password))
+	client.Authentication.SetBasicAuth(*username, password)
 
 	change, _, err := client.Changes.GetChange(changeID, nil)
 	if err != nil {
