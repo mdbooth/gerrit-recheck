@@ -26,7 +26,7 @@ make
 To automatically recheck change `https://review.opendev.org/c/openstack/openstacksdk/+/763121/`, do:
 
 ```
-./gerrit-review 763121
+./gerrit-recheck 763121
 ```
 
 ## Behaviour
