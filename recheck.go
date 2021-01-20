@@ -92,7 +92,7 @@ func doCheck(client *gerrit.Client, changeID string) (bool, error) {
 
 	verifications, ok := change.Labels["Verified"]
 	if !ok {
-		log.Print("No verfication votes")
+		log.Print("No verification votes")
 		return false, nil
 	}
 
