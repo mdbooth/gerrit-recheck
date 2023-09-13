@@ -12,7 +12,7 @@ import (
 
 	"github.com/andygrunwald/go-gerrit"
 	"github.com/mattn/go-isatty"
-	"golang.org/x/crypto/ssh/terminal"
+	"golang.org/x/term"
 )
 
 const gerritInstance = "https://review.opendev.org"
@@ -40,7 +40,7 @@ func readPassword() (string, error) {
 	defer fmt.Print("\n")
 
 	if isatty.IsTerminal(os.Stdin.Fd()) {
-		bytes, err := terminal.ReadPassword(int(os.Stdin.Fd()))
+		bytes, err := term.ReadPassword(int(os.Stdin.Fd()))
 		if err != nil {
 			return "", err
 		}
