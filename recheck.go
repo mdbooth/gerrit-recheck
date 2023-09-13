@@ -12,7 +12,7 @@ import (
 
 	"github.com/andygrunwald/go-gerrit"
 	"github.com/mattn/go-isatty"
-	"golang.org/x/crypto/ssh/terminal"
+	"golang.org/x/term"
 )
 
 const gerritInstance = "https://review.opendev.org"
@@ -40,7 +40,7 @@ func readPassword() (string, error) {
 	defer fmt.Print("\n")
 
 	if isatty.IsTerminal(os.Stdin.Fd()) {
-		bytes, err := terminal.ReadPassword(int(os.Stdin.Fd()))
+		bytes, err := term.ReadPassword(int(os.Stdin.Fd()))
 		if err != nil {
 			return "", err
 		}
@@ -154,7 +154,7 @@ func doCheck(client *gerrit.Client, changeID string) (bool, error) {
 		if msg.Date.After(ciVoteDate) {
 			if msg.Tag == "" {
 				for _, line := range strings.Split(msg.Message, "\n") {
-					if strings.ToLower(strings.TrimSpace(line)) == "recheck" {
+					if strings.HasPrefix(strings.ToLower(strings.TrimSpace(line)), "recheck") {
 						recheckDate = msg.Date.Time
 						recheckAuthor = msg.Author.Name
 					}
