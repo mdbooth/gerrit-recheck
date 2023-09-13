@@ -154,7 +154,7 @@ func doCheck(client *gerrit.Client, changeID string) (bool, error) {
 		if msg.Date.After(ciVoteDate) {
 			if msg.Tag == "" {
 				for _, line := range strings.Split(msg.Message, "\n") {
-					if strings.ToLower(strings.TrimSpace(line)) == "recheck" {
+					if strings.HasPrefix(strings.ToLower(strings.TrimSpace(line)), "recheck") {
 						recheckDate = msg.Date.Time
 						recheckAuthor = msg.Author.Name
 					}
