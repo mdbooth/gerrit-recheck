@@ -21,19 +21,23 @@ const ciName = "Zuul"
 
 var username = flag.String("u", "", "Gerrit username")
 
-func getChangeID() (string, error) {
-	if flag.NArg() != 1 {
-		return "", fmt.Errorf("no change ID specified")
+func getChangeIDs() ([]string, error) {
+	changeIDs := []string{}
+
+	if flag.NArg() < 1 {
+		return changeIDs, fmt.Errorf("no change ID specified")
 	}
 
-	changeIDStr := flag.Args()[0]
+	for i := 0; i < flag.NArg(); i++ {
+		changeIDStr := flag.Args()[i]
 
-	changeID, err := strconv.Atoi(changeIDStr)
-	if err != nil || changeID < 0 {
-		return "", fmt.Errorf("invalid change id %s", changeIDStr)
+		changeID, err := strconv.Atoi(changeIDStr)
+		if err != nil || changeID < 0 {
+			return changeIDs, fmt.Errorf("invalid change ID %s", changeIDStr)
+		}
+		changeIDs = append(changeIDs, changeIDStr)
 	}
-
-	return changeIDStr, nil
+	return changeIDs, nil
 }
 
 func readPassword() (string, error) {
@@ -58,7 +62,7 @@ func readPassword() (string, error) {
 
 func exitWithUsage(msg string) {
 	fmt.Fprintf(os.Stderr, "%s\n", msg)
-	fmt.Fprintf(os.Stderr, "Usage: gerrit-recheck -u <gerrit username> <gerrit change id>\n")
+	fmt.Fprintf(os.Stderr, "Usage: gerrit-recheck -u <USERNAME> <CHANGE_ID> [<CHANGE_ID>...]\n")
 	flag.PrintDefaults()
 	os.Exit(1)
 }
@@ -69,7 +73,7 @@ func main() {
 		exitWithUsage("Username not specified")
 	}
 
-	changeID, err := getChangeID()
+	changeIDs, err := getChangeIDs()
 	if err != nil {
 		exitWithUsage(err.Error())
 	}
@@ -88,21 +92,25 @@ func main() {
 
 	client.Authentication.SetBasicAuth(*username, password)
 
-	change, _, err := client.Changes.GetChange(context.TODO(), changeID, nil)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "Failed to get change details from gerrit: %s\n", err.Error())
-		os.Exit(1)
-	}
-	log.Printf("Rechecking change %s: %s", changeID, change.Subject)
-
 	for {
-		approved, err := doCheck(client, changeID)
-		if err != nil {
-			log.Printf("ERROR: %s", err)
+		newChangeIDs := []string{}
+		for _, changeID := range changeIDs {
+			approved, err := doCheck(client, changeID)
+			if err != nil {
+				log.Printf("ERROR: %s", err)
+			}
+
+			if !approved {
+				newChangeIDs = append(newChangeIDs, changeID)
+			}
 		}
-		if approved {
+
+		changeIDs = newChangeIDs
+
+		if len(changeIDs) == 0 {
 			break
 		}
+
 		log.Print("Waiting for 30 minutes")
 		time.Sleep(time.Minute * 30)
 	}
