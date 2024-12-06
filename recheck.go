@@ -2,6 +2,7 @@ package main
 
 import (
 	"bufio"
+	"context"
 	"flag"
 	"fmt"
 	"log"
@@ -79,10 +80,10 @@ func main() {
 		os.Exit(1)
 	}
 
-	client, err := gerrit.NewClient(gerritInstance, nil)
+	client, err := gerrit.NewClient(context.TODO(), gerritInstance, nil)
 	client.Authentication.SetBasicAuth(*username, password)
 
-	change, _, err := client.Changes.GetChange(changeID, nil)
+	change, _, err := client.Changes.GetChange(context.TODO(), changeID, nil)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Failed to get change details from gerrit: %s\n", err.Error())
 		os.Exit(1)
@@ -111,7 +112,7 @@ func prettyDate(date time.Time) string {
 }
 
 func doCheck(client *gerrit.Client, changeID string) (bool, error) {
-	change, _, err := client.Changes.GetChangeDetail(changeID, nil)
+	change, _, err := client.Changes.GetChangeDetail(context.TODO(), changeID, nil)
 	if err != nil {
 		return false, fmt.Errorf("Error fetching change details: %w", err)
 	}
@@ -181,7 +182,7 @@ func doCheck(client *gerrit.Client, changeID string) (bool, error) {
 		return false, nil
 	}
 
-	_, _, err = client.Changes.SetReview(changeID, "current", &gerrit.ReviewInput{Message: "recheck"})
+	_, _, err = client.Changes.SetReview(context.TODO(), changeID, "current", &gerrit.ReviewInput{Message: "recheck"})
 	if err != nil {
 		return false, fmt.Errorf("Adding review comment: %w", err)
 	}
