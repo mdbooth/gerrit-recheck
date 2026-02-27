@@ -93,26 +93,65 @@ func main() {
 
 	client.Authentication.SetBasicAuth(*username, password)
 
+	// mapping of change ID to merge status
+	changeMergeStatus := make(map[string]bool)
+
+	for _, changeID := range changeIDs {
+		change, _, err := client.Changes.GetChange(context.TODO(), changeID, nil)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Failed to get change details from Gerrit: %s\n", err.Error())
+			os.Exit(1)
+		}
+
+		changeMergeStatus[change.ChangeID] = false
+
+		// GetRelatedChanges expects a string revision number despite it being an integer
+		relatedChanges, _, err := client.Changes.GetRelatedChanges(context.TODO(), changeID, strconv.Itoa(change.CurrentRevisionNumber))
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Failed to get change details from Gerrit: %s\n", err.Error())
+			os.Exit(1)
+		}
+
+		foundChange := false
+		for _, relatedChange := range relatedChanges.Changes {
+			if !foundChange {
+				// we want to skip dependent patches as we only want dependencies
+				if relatedChange.ChangeID == change.ChangeID {
+					foundChange = true
+				}
+				continue
+			}
+			changeMergeStatus[relatedChange.ChangeID] = false
+		}
+	}
+
 	for {
-		newChangeIDs := []string{}
-		for _, changeID := range changeIDs {
+		remainingChanges := false
+
+		for changeID, changeMerged := range changeMergeStatus {
+			if changeMerged {
+				continue
+			}
+
 			approved, err := doCheck(client, changeID, *dryRun)
 			if err != nil {
 				log.Printf("ERROR: %s", err)
 			}
 
-			if !approved {
-				newChangeIDs = append(newChangeIDs, changeID)
+			if approved {
+				changeMergeStatus[changeID] = true
+			} else {
+				remainingChanges = true
 			}
+			fmt.Println()
 		}
 
-		changeIDs = newChangeIDs
-
-		if len(changeIDs) == 0 {
+		if !remainingChanges {
+			log.Println("All changes have merged")
 			break
 		}
 
-		log.Print("Waiting for 30 minutes")
+		log.Println("Waiting for 30 minutes")
 		time.Sleep(time.Minute * 30)
 	}
 }
@@ -130,7 +169,7 @@ func doCheck(client *gerrit.Client, changeID string, dryRun bool) (bool, error) 
 	if err != nil {
 		return false, fmt.Errorf("error fetching change details: %w", err)
 	}
-	log.Print("Fetched change details")
+	log.Printf("Fetched change %s details: %s: %s", changeID, change.ChangeID, change.Subject)
 
 	verifications, ok := change.Labels["Verified"]
 	if !ok {

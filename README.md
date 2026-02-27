@@ -21,13 +21,13 @@ make
 
 ## Usage
 
-To automatically recheck change `https://review.opendev.org/c/openstack/openstacksdk/+/763121/`, do:
+To automatically recheck change:
 
 ```
 ./gerrit-recheck -u MatthewBooth 763121
 ```
 
-You can also specify multiple reviews:
+This will recheck the change and any dependencies. You can also specify multiple unrelated changes:
 
 ```
 ./gerrit-recheck -u MatthewBooth 763121 763122 763123
