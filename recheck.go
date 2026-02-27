@@ -147,7 +147,12 @@ func main() {
 		}
 
 		if !remainingChanges {
-			log.Println("All changes have merged")
+			log.Println("All changes have merged. Exiting...")
+			break
+		}
+
+		if *dryRun {
+			log.Println("Running in dry-run mode. Exiting...")
 			break
 		}
 
