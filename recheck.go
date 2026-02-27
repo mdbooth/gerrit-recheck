@@ -22,23 +22,23 @@ const ciName = "Zuul"
 var username = flag.String("u", "", "Gerrit username")
 var dryRun = flag.Bool("dry-run", false, "Don't post recheck messages")
 
-func getChangeIDs() ([]string, error) {
-	changeIDs := []string{}
+func getChangeNumbers() ([]string, error) {
+	changeNumbers := []string{}
 
 	if flag.NArg() < 1 {
-		return changeIDs, fmt.Errorf("no change ID specified")
+		return changeNumbers, fmt.Errorf("no change number specified")
 	}
 
 	for i := 0; i < flag.NArg(); i++ {
-		changeIDStr := flag.Args()[i]
+		changeNumberStr := flag.Args()[i]
 
-		changeID, err := strconv.Atoi(changeIDStr)
-		if err != nil || changeID < 0 {
-			return changeIDs, fmt.Errorf("invalid change ID %s", changeIDStr)
+		changeNumber, err := strconv.Atoi(changeNumberStr)
+		if err != nil || changeNumber < 0 {
+			return changeNumbers, fmt.Errorf("invalid change number %s", changeNumberStr)
 		}
-		changeIDs = append(changeIDs, changeIDStr)
+		changeNumbers = append(changeNumbers, changeNumberStr)
 	}
-	return changeIDs, nil
+	return changeNumbers, nil
 }
 
 func readPassword() (string, error) {
@@ -74,7 +74,7 @@ func main() {
 		exitWithUsage("Username not specified")
 	}
 
-	changeIDs, err := getChangeIDs()
+	changeNumbers, err := getChangeNumbers()
 	if err != nil {
 		exitWithUsage(err.Error())
 	}
@@ -96,8 +96,8 @@ func main() {
 	// mapping of change ID to merge status
 	changeMergeStatus := make(map[string]bool)
 
-	for _, changeID := range changeIDs {
-		change, _, err := client.Changes.GetChange(context.TODO(), changeID, nil)
+	for _, changeNumber := range changeNumbers {
+		change, _, err := client.Changes.GetChange(context.TODO(), changeNumber, nil)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "Failed to get change details from Gerrit: %s\n", err.Error())
 			os.Exit(1)
@@ -106,7 +106,7 @@ func main() {
 		changeMergeStatus[change.ChangeID] = false
 
 		// GetRelatedChanges expects a string revision number despite it being an integer
-		relatedChanges, _, err := client.Changes.GetRelatedChanges(context.TODO(), changeID, strconv.Itoa(change.CurrentRevisionNumber))
+		relatedChanges, _, err := client.Changes.GetRelatedChanges(context.TODO(), changeNumber, strconv.Itoa(change.CurrentRevisionNumber))
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "Failed to get change details from Gerrit: %s\n", err.Error())
 			os.Exit(1)
@@ -164,12 +164,12 @@ func prettyDate(date time.Time) string {
 	return date.Format("Mon 15:04:05")
 }
 
-func doCheck(client *gerrit.Client, changeID string, dryRun bool) (bool, error) {
-	change, _, err := client.Changes.GetChangeDetail(context.TODO(), changeID, nil)
+func doCheck(client *gerrit.Client, changeNumber string, dryRun bool) (bool, error) {
+	change, _, err := client.Changes.GetChangeDetail(context.TODO(), changeNumber, nil)
 	if err != nil {
 		return false, fmt.Errorf("error fetching change details: %w", err)
 	}
-	log.Printf("Fetched change %s details: %s: %s", changeID, change.ChangeID, change.Subject)
+	log.Printf("Fetched change %s details: %s: %s", changeNumber, change.ChangeID, change.Subject)
 
 	verifications, ok := change.Labels["Verified"]
 	if !ok {
@@ -236,7 +236,7 @@ func doCheck(client *gerrit.Client, changeID string, dryRun bool) (bool, error) 
 	}
 
 	if !dryRun {
-		_, _, err = client.Changes.SetReview(context.TODO(), changeID, "current", &gerrit.ReviewInput{Message: "recheck"})
+		_, _, err = client.Changes.SetReview(context.TODO(), changeNumber, "current", &gerrit.ReviewInput{Message: "recheck"})
 		if err != nil {
 			return false, fmt.Errorf("error adding review comment: %w", err)
 		}
