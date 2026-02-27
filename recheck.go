@@ -157,6 +157,7 @@ func main() {
 		}
 
 		log.Println("Waiting for 30 minutes")
+		log.Println()
 		time.Sleep(time.Minute * 30)
 	}
 }
