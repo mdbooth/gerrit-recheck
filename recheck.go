@@ -20,6 +20,7 @@ const gerritInstance = "https://review.opendev.org"
 const ciName = "Zuul"
 
 var username = flag.String("u", "", "Gerrit username")
+var dryRun = flag.Bool("dry-run", false, "Don't post recheck messages")
 
 func getChangeIDs() ([]string, error) {
 	changeIDs := []string{}
@@ -62,7 +63,7 @@ func readPassword() (string, error) {
 
 func exitWithUsage(msg string) {
 	fmt.Fprintf(os.Stderr, "%s\n", msg)
-	fmt.Fprintf(os.Stderr, "Usage: gerrit-recheck -u <USERNAME> <CHANGE_ID> [<CHANGE_ID>...]\n")
+	fmt.Fprintf(os.Stderr, "Usage: gerrit-recheck -u <USERNAME> [--dry-run] <CHANGE_ID> [<CHANGE_ID>...]\n")
 	flag.PrintDefaults()
 	os.Exit(1)
 }
@@ -95,7 +96,7 @@ func main() {
 	for {
 		newChangeIDs := []string{}
 		for _, changeID := range changeIDs {
-			approved, err := doCheck(client, changeID)
+			approved, err := doCheck(client, changeID, *dryRun)
 			if err != nil {
 				log.Printf("ERROR: %s", err)
 			}
@@ -124,7 +125,7 @@ func prettyDate(date time.Time) string {
 	return date.Format("Mon 15:04:05")
 }
 
-func doCheck(client *gerrit.Client, changeID string) (bool, error) {
+func doCheck(client *gerrit.Client, changeID string, dryRun bool) (bool, error) {
 	change, _, err := client.Changes.GetChangeDetail(context.TODO(), changeID, nil)
 	if err != nil {
 		return false, fmt.Errorf("error fetching change details: %w", err)
@@ -195,11 +196,15 @@ func doCheck(client *gerrit.Client, changeID string) (bool, error) {
 		return false, nil
 	}
 
-	_, _, err = client.Changes.SetReview(context.TODO(), changeID, "current", &gerrit.ReviewInput{Message: "recheck"})
-	if err != nil {
-		return false, fmt.Errorf("error adding review comment: %w", err)
+	if !dryRun {
+		_, _, err = client.Changes.SetReview(context.TODO(), changeID, "current", &gerrit.ReviewInput{Message: "recheck"})
+		if err != nil {
+			return false, fmt.Errorf("error adding review comment: %w", err)
+		}
+		log.Print("Added recheck")
+	} else {
+		log.Print("Skipping comment: Dry run mode enabled")
 	}
-	log.Print("Added recheck")
 
 	return false, nil
 }
